@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phần Mềm Quản Lý Tín Dụng</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f7f6; }
+        h2 { color: #333; text-align: center; margin-bottom: 5px; }
+        .subtitle { text-align: center; color: #d9534f; font-weight: bold; margin-top: 0; font-size: 15px; margin-bottom: 20px;}
+        
+        .tab { overflow: hidden; border: 1px solid #ccc; background-color: #e9ecef; border-radius: 5px 5px 0 0; }
+        .tab button { background-color: inherit; float: left; border: none; outline: none; cursor: pointer; padding: 14px 20px; font-size: 16px; font-weight: bold; transition: 0.3s; }
+        .tab button:hover { background-color: #ddd; }
+        .tab button.active { background-color: #007bff; color: white; }
+        
+        .tabcontent { display: none; padding: 20px; border: 1px solid #ccc; border-top: none; background-color: white; border-radius: 0 0 5px 5px; min-height: 400px; }
+        
+        .table-responsive { overflow-x: auto; margin-top: 15px; }
+        table { border-collapse: collapse; width: 100%; min-width: 800px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background-color: #f8f9fa; position: sticky; top: 0; }
+        
+        .col-name { min-width: 150px; text-align: left; font-weight: bold; cursor: pointer; color: #007bff; }
+        .col-name:hover { text-decoration: underline; color: #0056b3; }
+        .col-name-detail { min-width: 150px; text-align: left; font-weight: bold; }
+        
+        .day-input { width: 70px; padding: 8px; text-align: right; border: 1px solid #ccc; border-radius: 3px; font-size: 15px; font-weight: bold;}
+        .col-total, .col-old-debt { font-weight: bold; color: #d9534f; background-color: #fdf2f2; font-size: 16px;}
+        
+        .btn-add { background-color: #28a745; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; }
+        .btn-add:hover { background-color: #218838; }
+        .btn-show-all { background-color: #6c757d; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 15px;}
+        
+        .btn-action { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; margin-left: 10px; color: white;}
+        .btn-delete { background-color: #dc3545; }
+        .btn-delete:hover { background-color: #c82333; }
+        .btn-edit { background-color: #ffc107; color: #333;}
+        .btn-edit:hover { background-color: #e0a800; }
+
+        .input-new-user { padding: 10px; font-size: 14px; width: 250px; border: 1px solid #ccc; border-radius: 4px; margin-right: 10px;}
+        .today-col { background-color: #e6f7ff !important; border-bottom: 2px solid #007bff; }
+        
+        .header-actions { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+    <h2>Phần Mềm Quản Lý Tín Dụng</h2>
+    <p class="subtitle">(MẸO: Gõ số rút gọn. Ví dụ: gõ 50 máy sẽ tự hiểu là 50.000đ)</p>
+
+    <div class="tab">
+        <button class="tablinks active" id="btnTabTongHop" onclick="openTab(event, 'TongHop')">Tổng Hợp (Danh Sách Khách)</button>
+        <button class="tablinks" id="btnTabChiTiet" onclick="openTab(event, 'ChiTiet')">Chi Tiết (Nhập Liệu)</button>
+    </div>
+
+    <div id="TongHop" class="tabcontent" style="display: block;">
+        <div>
+            <input type="text" id="newUserName" class="input-new-user" placeholder="Nhập tên khách hàng mới...">
+            <button class="btn-add" onclick="addNewUser()">+ Thêm Khách Hàng</button>
+        </div>
+        <p><i>* Bấm vào tên khách hàng để ghi nợ hoặc xóa/sửa tên</i></p>
+        <div class="table-responsive">
+            <table style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left;">Tên Khách Hàng</th>
+                        <th>Tổng Nợ Hiện Tại (VNĐ)</th>
+                    </tr>
+                </thead>
+                <tbody id="tongHopBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="ChiTiet" class="tabcontent">
+        <div class="header-actions">
+            <button class="btn-show-all" onclick="renderChiTiet()">Hiển thị tất cả khách hàng</button>
+            <div id="userActionButtons"></div>
+        </div>
+        
+        <h3 id="chiTietTitle" style="color: #007bff; margin-top: 0;"></h3>
+        <p style="color: #666; font-size: 14px; font-style: italic;">(Để sửa tiền, chỉ cần gõ số mới hoặc xóa trắng ô tương ứng)</p>
+        
+        <div class="table-responsive">
+            <table>
+                <thead><tr id="headerRow"></tr></thead>
+                <tbody id="chiTietBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let creditData = JSON.parse(localStorage.getItem('creditData')) || {};
+
+        function saveData() {
+            localStorage.setItem('creditData', JSON.stringify(creditData));
+        }
+
+        function getRecentDates() {
+            let dates = [];
+            for (let i = 5; i >= 0; i--) {
+                let d = new Date();
+                d.setDate(d.getDate() - i);
+                let yyyy = d.getFullYear();
+                let mm = String(d.getMonth() + 1).padStart(2, '0');
+                let dd = String(d.getDate()).padStart(2, '0');
+                let key = `${yyyy}-${mm}-${dd}`;
+                let display = i === 0 ? `Hôm nay<br>(${dd}/${mm})` : `${dd}/${mm}`;
+                dates.push({ key: key, display: display, isToday: i === 0 });
+            }
+            return dates;
+        }
+
+        const recentDates = getRecentDates();
+
+        function calculateUserTotal(name) {
+            let total = 0;
+            if(creditData[name]) {
+                for (let dateKey in creditData[name]) {
+                    total += parseFloat(creditData[name][dateKey]) || 0;
+                }
+            }
+            return total;
+        }
+
+        function calculateOldDebt(name) {
+            let total = calculateUserTotal(name);
+            let recentDebt = 0;
+            recentDates.forEach(d => {
+                recentDebt += parseFloat(creditData[name][d.key]) || 0;
+            });
+            return total - recentDebt;
+        }
+
+        function renderTongHop() {
+            const tbody = document.getElementById('tongHopBody');
+            tbody.innerHTML = '';
+            let names = Object.keys(creditData);
+            if(names.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="2">Chưa có dữ liệu. Hãy thêm khách hàng mới.</td></tr>';
+                return;
+            }
+            names.forEach(name => {
+                let total = calculateUserTotal(name);
+                let tr = document.createElement('tr');
+                // TỰ ĐỘNG NHÂN 1000 KHI HIỂN THỊ TỔNG
+                tr.innerHTML = `<td class="col-name" onclick="goToDetail('${name}')">${name}</td>
+                                <td class="col-total">${(total * 1000).toLocaleString('vi-VN')} đ</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function addNewUser() {
+            let nameInput = document.getElementById('newUserName');
+            let name = nameInput.value.trim();
+            if(name === "") { alert("Vui lòng nhập tên khách hàng!"); return; }
+            if(creditData[name]) { alert("Khách hàng này đã tồn tại!"); return; }
+            creditData[name] = {};
+            saveData();
+            nameInput.value = "";
+            renderTongHop();
+            goToDetail(name);
+        }
+
+        function renameUser(oldName) {
+            let newName = prompt(`Nhập tên mới để thay thế cho "${oldName}":`, oldName);
+            if (newName && newName.trim() !== "" && newName.trim() !== oldName) {
+                newName = newName.trim();
+                if (creditData[newName]) { alert("Tên này đã tồn tại, vui lòng chọn tên khác!"); return; }
+                creditData[newName] = creditData[oldName];
+                delete creditData[oldName];
+                saveData();
+                renderTongHop();
+                goToDetail(newName);
+            }
+        }
+
+        function deleteUser(name) {
+            if(confirm(`⚠️ CẢNH BÁO: Anh có chắc chắn muốn XÓA vĩnh viễn toàn bộ sổ sách của "${name}" không? Hành động này không thể lấy lại được.`)) {
+                delete creditData[name];
+                saveData();
+                renderTongHop();
+                document.getElementById('btnTabTongHop').click(); 
+            }
+        }
+
+        function setupDetailHeader() {
+            const headerRow = document.getElementById('headerRow');
+            headerRow.innerHTML = '<th class="col-name-detail">Tên Khách Hàng</th><th title="Nợ phát sinh trước các ngày hiển thị">Nợ Cũ (VNĐ)</th>';
+            recentDates.forEach(d => {
+                let th = document.createElement('th');
+                th.innerHTML = d.display;
+                if(d.isToday) th.className = 'today-col';
+                headerRow.appendChild(th);
+            });
+            headerRow.innerHTML += '<th class="col-total">Tổng Cộng (VNĐ)</th>';
+        }
+
+        function renderChiTiet(filterName = null) {
+            setupDetailHeader();
+            const tbody = document.getElementById('chiTietBody');
+            const title = document.getElementById('chiTietTitle');
+            const actionBtns = document.getElementById('userActionButtons');
+            tbody.innerHTML = '';
+            actionBtns.innerHTML = ''; 
+
+            let names = Object.keys(creditData);
+            if (filterName) {
+                names = names.filter(n => n === filterName);
+                title.innerText = `Đang nhập liệu cho: ${filterName}`;
+                actionBtns.innerHTML = `
+                    <button class="btn-action btn-edit" onclick="renameUser('${filterName}')">✏️ Đổi Tên</button>
+                    <button class="btn-action btn-delete" onclick="deleteUser('${filterName}')">🗑️ Xóa Khách Hàng</button>
+                `;
+            } else {
+                title.innerText = `Đang hiển thị: Tất cả khách hàng`;
+            }
+
+            names.forEach(name => {
+                let tr = document.createElement('tr');
+                let tdName = document.createElement('td');
+                tdName.className = 'col-name-detail';
+                tdName.innerText = name;
+                tr.appendChild(tdName);
+
+                let oldDebt = calculateOldDebt(name);
+                let tdOld = document.createElement('td');
+                tdOld.className = 'col-old-debt';
+                // TỰ ĐỘNG NHÂN 1000 Ở CỘT NỢ CŨ
+                tdOld.innerText = (oldDebt === 0) ? '0' : (oldDebt * 1000).toLocaleString('vi-VN');
+                tr.appendChild(tdOld);
+
+                recentDates.forEach(d => {
+                    let td = document.createElement('td');
+                    if(d.isToday) td.className = 'today-col';
+                    let val = creditData[name][d.key] || '';
+                    // Cho phép nhập số thập phân (step="any") để nhập 50.5
+                    td.innerHTML = `<input type="number" step="any" class="day-input" value="${val}" 
+                                    onchange="updateRecord('${name}', '${d.key}', this.value)" min="0" placeholder="0">`;
+                    tr.appendChild(td);
+                });
+
+                let total = calculateUserTotal(name);
+                let tdTotal = document.createElement('td');
+                tdTotal.className = 'col-total';
+                // TỰ ĐỘNG NHÂN 1000 Ở CỘT TỔNG CỘNG
+                tdTotal.innerText = (total === 0) ? '0' : (total * 1000).toLocaleString('vi-VN');
+                tr.appendChild(tdTotal);
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateRecord(name, dateKey, value) {
+            let num = parseFloat(value);
+            if(isNaN(num) || num === 0) {
+                delete creditData[name][dateKey];
+            } else {
+                creditData[name][dateKey] = num;
+            }
+            saveData();
+            let currentFilter = document.getElementById('chiTietTitle').innerText.includes('Tất cả') ? null : name;
+            renderChiTiet(currentFilter);
+            renderTongHop();
+        }
+
+        function goToDetail(name) {
+            document.getElementById('btnTabChiTiet').click();
+            renderChiTiet(name);
+        }
+
+        function openTab(evt, tabName) {
+            let i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tabcontent");
+            for (i = 0; i < tabcontent.length; i++) { tabcontent[i].style.display = "none"; }
+            tablinks = document.getElementsByClassName("tablinks");
+            for (i = 0; i < tablinks.length; i++) { tablinks[i].className = tablinks[i].className.replace(" active", ""); }
+            document.getElementById(tabName).style.display = "block";
+            if(evt) evt.currentTarget.className += " active";
+        }
+
+        window.onload = function() {
+            renderTongHop();
+            document.getElementById('btnTabTongHop').click();
+        };
+    </script>
+
+</body>
+</html>
