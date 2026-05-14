@@ -3,61 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Quản Lý Nhân Viên - Anh Tâm</title>
+    <title>Quản Lý Limo - Anh Tâm</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --blue: #007AFF; --green: #34C759; --orange: #FF9500; --red: #FF3B30; --gray: #F2F2F7; }
-        body { font-family: -apple-system, system-ui, sans-serif; background: var(--gray); margin: 0; padding: 10px; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--gray); margin: 0; padding: 10px; }
         .container { max-width: 600px; margin: 0 auto; padding-bottom: 40px; }
         .card { background: #fff; padding: 15px; border-radius: 16px; margin-bottom: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         h3 { margin: 0 0 10px 0; font-size: 14px; color: #8e8e93; text-transform: uppercase; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         
         .staff-card { background: #fff; border: 1px solid #e5e5ea; padding: 15px; border-radius: 18px; margin-bottom: 10px; }
         .active { border: 2px solid var(--green); background: #f2faf2; }
-        .staff-name { font-weight: 800; font-size: 18px; text-transform: uppercase; margin-bottom: 10px; display: block; }
+        .staff-name { font-weight: 800; font-size: 18px; text-transform: uppercase; margin-bottom: 5px; display: block; }
         .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         button { border: none; border-radius: 12px; font-weight: 700; cursor: pointer; padding: 12px 5px; }
         .btn-loc { background: #f0f0f5; border: 1px solid #d1d1d6; }
-        .btn-out { background: var(--orange); color: #fff; width: 100%; margin-top: 5px; padding: 15px; font-size: 16px; }
-
-        .filter-box { display: flex; gap: 5px; margin-bottom: 10px; }
-        .filter-btn { flex: 1; padding: 8px; font-size: 12px; border-radius: 8px; background: #e5e5ea; color: #333; }
-        .filter-active { background: var(--blue); color: #fff; }
+        .btn-out { background: var(--orange); color: #fff; width: 100%; padding: 15px; font-size: 16px; }
 
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         th, td { text-align: left; padding: 10px 5px; border-bottom: 1px solid #eee; }
         .summary-row { cursor: pointer; font-weight: bold; color: var(--blue); }
-        .summary-row:active { background: #eee; }
         
+        .week-header { background: #f0f0f5; font-weight: bold; padding: 8px; font-size: 12px; color: #555; margin-top: 10px; border-radius: 6px; }
+        .btn-edit-sm { background: var(--blue); color: #fff; padding: 4px 8px; font-size: 11px; border-radius: 6px; margin-left: 5px; }
         .admin-box { display:none; background:#fff1f1; border:2px dashed var(--red); padding:15px; border-radius:12px; margin-bottom:15px; }
-        .input-group { margin-bottom: 10px; display: flex; flex-direction: column; gap: 5px; }
-        input, select { padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div style="text-align: right; margin-bottom: 10px;">
-        <button onclick="toggleAdminPanel()" style="background:none; color:#8e8e93; font-size:12px;">⚙️ QUẢN TRỊ ANH TÂM</button>
+        <button onclick="toggleAdminPanel()" style="background:none; color:#8e8e93; font-size:12px;">⚙️ QUẢN TRỊ</button>
     </div>
 
     <div id="adminPanel" class="admin-box">
-        <h4 style="color:var(--red); margin:0 0 10px 0;">THÊM CÔNG THIẾU</h4>
-        <div class="input-group">
-            <select id="manualStaff"></select>
-            <select id="manualLoc">
-                <option value="KHÁNH DƯƠNG">KHÁNH DƯƠNG</option>
-                <option value="SÔNG ĐÁY">SÔNG ĐÁY</option>
-                <option value="LASVEGAST">LASVEGAST</option>
-                <option value="MẠNH ĐIỆP">MẠNH ĐIỆP</option>
-            </select>
-            <input type="number" id="manualMins" placeholder="Số phút làm việc (VD: 60)">
-            <button onclick="addManualWork()" style="background:var(--green); color:#fff; padding:10px;">CỘNG CÔNG</button>
+        <h4 style="color:var(--red); margin:0 0 10px 0;">DANH SÁCH NHÂN VIÊN</h4>
+        <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <input type="text" id="newStaffName" placeholder="Tên NV mới..." style="flex:1; padding:10px; border-radius:8px; border:1px solid #ccc;">
+            <button onclick="addNewStaff()" style="background:var(--blue); color:#fff; padding:0 15px; border-radius:8px;">THÊM</button>
         </div>
-        <hr>
-        <h4 style="color:var(--red); margin:10px 0;">DANH SÁCH NHÂN VIÊN</h4>
         <div id="staffListManage"></div>
-        <button onclick="document.getElementById('adminPanel').style.display='none'" style="width:100%; margin-top:10px; background:#666; color:#fff; padding:8px; border-radius:8px;">ĐÓNG</button>
     </div>
 
     <div class="card">
@@ -66,27 +51,14 @@
     </div>
 
     <div class="card">
-        <h3>Tổng Công (Bấm tên để xem lịch sử)</h3>
-        <div class="filter-box">
-            <button id="f-today" class="filter-btn filter-active" onclick="setFilter('today')">Hôm nay</button>
-            <button id="f-week" class="filter-btn" onclick="setFilter('week')">7 ngày qua</button>
-            <button id="f-month" class="filter-btn" onclick="setFilter('month')">Tháng này</button>
-        </div>
+        <h3>Tổng Công Tháng Này (Bấm tên để xem lịch sử tuần)</h3>
         <table><tbody id="summaryBody"></tbody></table>
     </div>
 
-    <div class="card">
+    <div class="card" id="histCard" style="display:none;">
         <h3 id="histTitle">Lịch sử chi tiết</h3>
-        <div id="viewingInfo" style="display:none; margin-bottom:10px; font-size:12px; color:var(--blue); font-weight:bold;">
-            Đang xem riêng: <span id="viewingName"></span> 
-            <button onclick="clearFilter()" style="color:red; background:none; font-size:11px;">[Xem tất cả]</button>
-        </div>
-        <div style="overflow-x: auto;">
-            <table>
-                <thead><tr><th>Tên/Ngày</th><th>Điểm</th><th>Tổng</th><th>X</th></tr></thead>
-                <tbody id="histBody"></tbody>
-            </table>
-        </div>
+        <div id="histContent"></div>
+        <button onclick="document.getElementById('histCard').style.display='none'" style="width:100%; margin-top:15px; background:#666; color:#fff; padding:10px; border-radius:10px;">ĐÓNG LỊCH SỬ</button>
     </div>
 </div>
 
@@ -95,51 +67,73 @@
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhaHB6cXhtZGt6cGVibXRlcnBsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3Mzc2ODYsImV4cCI6MjA5NDMxMzY4Nn0.kAseV2u7c25UIfEdq0By4KC53ZxhaFimP1D5-OjhO9Y';
     const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
     const PASS = "Tâm1234"; 
-    let currentFilter = 'today', selectedStaff = null, staff = [];
+    let staff = [];
 
     async function init() {
         const { data } = await supabaseClient.from('staff').select('*').order('name');
         staff = data || [];
-        const sel = document.getElementById('manualStaff');
-        sel.innerHTML = staff.map(s => `<option value="${s.name}">${s.name.toUpperCase()}</option>`).join('');
         renderAdminList();
-        loadAllData();
+        loadSummary();
+        renderStaffBtns();
     }
 
-    function setFilter(type) {
-        currentFilter = type;
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('filter-active'));
-        document.getElementById('f-' + type).classList.add('filter-active');
-        loadAllData();
+    async function loadSummary() {
+        const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('en-CA');
+        const { data } = await supabaseClient.from('work_history').select('*').gte('date_log', startOfMonth);
+        const sum = {};
+        data.forEach(h => { sum[h.staff_name] = (sum[h.staff_name] || 0) + h.duration_mins; });
+        document.getElementById('summaryBody').innerHTML = Object.keys(sum).sort().map(name => 
+            `<tr class="summary-row" onclick="viewStaffHistory('${name}')"><td>${name.toUpperCase()}</td><td style="text-align:right">${Math.floor(sum[name]/60)}h ${sum[name]%60}m ></td></tr>`).join('');
     }
 
-    function filterByStaff(name) {
-        selectedStaff = name;
-        document.getElementById('viewingInfo').style.display = 'block';
-        document.getElementById('viewingName').innerText = name.toUpperCase();
-        loadAllData();
-    }
-
-    function clearFilter() {
-        selectedStaff = null;
-        document.getElementById('viewingInfo').style.display = 'none';
-        loadAllData();
-    }
-
-    async function loadAllData() {
-        let query = supabaseClient.from('work_history').select('*').order('id', { ascending: false });
-        const now = new Date();
-        if (currentFilter === 'today') query = query.eq('date_log', now.toLocaleDateString('en-CA'));
-        else if (currentFilter === 'week') query = query.gte('date_log', new Date(now - 7*864e5).toLocaleDateString('en-CA'));
-        else if (currentFilter === 'month') query = query.gte('date_log', new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString('en-CA'));
+    async function viewStaffHistory(name) {
+        const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('en-CA');
+        const { data } = await supabaseClient.from('work_history').select('*').eq('staff_name', name).gte('date_log', startOfMonth).order('date_log', {ascending: false});
         
-        if (selectedStaff) query = query.eq('staff_name', selectedStaff);
+        document.getElementById('histCard').style.display = 'block';
+        document.getElementById('histTitle').innerText = "LỊCH SỬ: " + name.toUpperCase();
+        
+        // Nhóm theo tuần
+        const weeks = { "Tuần 4 (22-Hết tháng)": [], "Tuần 3 (15-21)": [], "Tuần 2 (08-14)": [], "Tuần 1 (01-07)": [] };
+        data.forEach(h => {
+            const day = parseInt(h.date_log.split('-')[2]);
+            if (day <= 7) weeks["Tuần 1 (01-07)"].push(h);
+            else if (day <= 14) weeks["Tuần 2 (08-14)"].push(h);
+            else if (day <= 21) weeks["Tuần 3 (15-21)"].push(h);
+            else weeks["Tuần 4 (22-Hết tháng)"].push(h);
+        });
 
-        const { data: hist } = await query;
-        renderUI(hist || []);
+        let html = "";
+        for (let w in weeks) {
+            if (weeks[w].length > 0) {
+                html += `<div class="week-header">${w}</div><table>`;
+                weeks[w].forEach(h => {
+                    const sT = new Date(h.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                    const eT = new Date(h.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                    html += `<tr><td>${h.date_log.split('-')[2]}/${h.date_log.split('-')[1]}</td><td>${h.location}</td><td>${sT}-${eT}</td>
+                             <td><button class="btn-edit-sm" onclick="editEntry(${h.id}, '${sT}', '${eT}')">Sửa</button></td></tr>`;
+                });
+                html += `</table>`;
+            }
+        }
+        document.getElementById('histContent').innerHTML = html || "Chưa có dữ liệu tháng này.";
     }
 
-    function renderUI(hist) {
+    async function editEntry(id, oldIn, oldOut) {
+        if(prompt("Mật khẩu anh Tâm:") !== PASS) return;
+        const nIn = prompt("Giờ VÀO mới (HH:mm):", oldIn);
+        const nOut = prompt("Giờ RA mới (HH:mm):", oldOut);
+        if(nIn && nOut) {
+            const {data} = await supabaseClient.from('work_history').select('date_log').eq('id', id).single();
+            const start = new Date(`${data.date_log}T${nIn}:00`).toISOString();
+            const end = new Date(`${data.date_log}T${nOut}:00`).toISOString();
+            const diff = Math.floor((new Date(end) - new Date(start)) / 60000);
+            await supabaseClient.from('work_history').update({ start_time: start, end_time: end, duration_mins: diff }).eq('id', id);
+            alert("Đã sửa!"); init(); document.getElementById('histCard').style.display='none';
+        }
+    }
+
+    function renderStaffBtns() {
         const area = document.getElementById('listArea'); area.innerHTML = "";
         staff.forEach(s => {
             const isW = localStorage.getItem('W_LIMO_' + s.name);
@@ -147,48 +141,23 @@
             if (!isW) html += `<div class="btn-grid">` + ["KHÁNH DƯƠNG", "SÔNG ĐÁY", "LASVEGAST", "MẠNH ĐIỆP"].map(l => `<button class="btn btn-loc" onclick="startWork('${s.name}', '${l}')">${l}</button>`).join('') + `</div>`;
             else {
                 const d = JSON.parse(isW);
-                html += `<div style="color:var(--green); font-weight:bold; margin-bottom:10px;">📍 TẠI: ${d.loc}</div><button class="btn btn-out" onclick="endWork('${s.name}')">RA ĐIỂM (XÁC NHẬN)</button>`;
+                html += `<div style="color:var(--green); font-weight:bold; margin-bottom:10px;">📍 TẠI: ${d.loc}</div><button class="btn btn-out" onclick="endWork('${s.name}')">XÁC NHẬN RA ĐIỂM</button>`;
             }
             area.innerHTML += html + `</div>`;
         });
-
-        const histBody = document.getElementById('histBody'), summaryBody = document.getElementById('summaryBody');
-        const summary = {}; histBody.innerHTML = "";
-        
-        hist.forEach(h => {
-            const d = h.date_log.split('-').reverse().slice(0,2).join('/');
-            histBody.innerHTML += `<tr>
-                <td><b>${h.staff_name.toUpperCase()}</b><br><small>${d}</small></td>
-                <td>${h.location}</td>
-                <td>${Math.floor(h.duration_mins/60)}h ${h.duration_mins%60}m</td>
-                <td><button style="color:red; background:none;" onclick="deleteEntry(${h.id})">🗑️</button></td>
-            </tr>`;
-            summary[h.staff_name] = (summary[h.staff_name] || 0) + h.duration_mins;
-        });
-        summaryBody.innerHTML = Object.keys(summary).sort().map(name => `<tr class="summary-row" onclick="filterByStaff('${name}')"><td>${name.toUpperCase()}</td><td style="text-align:right">${Math.floor(summary[name]/60)}h ${summary[name]%60}m</td></tr>`).join('');
     }
 
-    async function addManualWork() {
-        if(prompt("Nhập mật khẩu anh Tâm:") !== PASS) return alert("Sai mật khẩu!");
-        const name = document.getElementById('manualStaff').value;
-        const loc = document.getElementById('manualLoc').value;
-        const mins = parseInt(document.getElementById('manualMins').value);
-        if(!mins) return alert("Hãy nhập số phút!");
-        await supabaseClient.from('work_history').insert([{ staff_name: name, location: loc, duration_mins: mins, date_log: new Date().toISOString().split('T')[0], start_time: new Date().toISOString() }]);
-        alert("Đã cộng công!"); loadAllData();
-    }
-
-    function toggleAdminPanel() { if(prompt("Mật khẩu anh Tâm:") === PASS) { const p = document.getElementById('adminPanel'); p.style.display = p.style.display==='none'?'block':'none'; } }
-    async function deleteEntry(id) { if(prompt("Mật khẩu anh Tâm để XÓA:") === PASS) { await supabaseClient.from('work_history').delete().eq('id', id); loadAllData(); } }
-    async function startWork(name, loc) { localStorage.setItem('W_LIMO_' + name, JSON.stringify({loc, start: new Date().toISOString()})); loadAllData(); }
+    async function startWork(name, loc) { localStorage.setItem('W_LIMO_' + name, JSON.stringify({loc, start: new Date().toISOString()})); init(); }
     async function endWork(name) {
         const w = JSON.parse(localStorage.getItem('W_LIMO_' + name));
         const diff = Math.floor((new Date() - new Date(w.start)) / 60000);
         await supabaseClient.from('work_history').insert([{ staff_name: name, location: w.loc, start_time: w.start, end_time: new Date().toISOString(), duration_mins: diff, date_log: new Date().toISOString().split('T')[0] }]);
-        localStorage.removeItem('W_LIMO_' + name); loadAllData();
+        localStorage.removeItem('W_LIMO_' + name); init();
     }
+    function toggleAdminPanel() { if(prompt("Mật khẩu anh Tâm:") === PASS) { const p = document.getElementById('adminPanel'); p.style.display = p.style.display==='none'?'block':'none'; } }
+    async function addNewStaff() { const n = document.getElementById('newStaffName').value.trim(); if(n){ await supabaseClient.from('staff').insert([{name:n}]); init(); document.getElementById('newStaffName').value=""; } }
     async function removeStaffName(id) { if(confirm("Xóa tên này?")){ await supabaseClient.from('staff').delete().eq('id',id); init(); } }
-    function renderAdminList() { document.getElementById('staffListManage').innerHTML = staff.map(s => `<div style="display:flex;justify-content:space-between;padding:8px 0;"><span>${s.name.toUpperCase()}</span><button onclick="removeStaffName(${s.id})" style="color:red;background:none;">Xóa</button></div>`).join(''); }
+    function renderAdminList() { document.getElementById('staffListManage').innerHTML = staff.map(s => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;"><span>${s.name.toUpperCase()}</span><button onclick="removeStaffName(${s.id})" style="color:red;background:none;">Xóa</button></div>`).join(''); }
     init();
 </script>
 </body>
