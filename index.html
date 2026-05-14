@@ -25,11 +25,15 @@
         .summary-row { cursor: pointer; font-weight: bold; color: var(--blue); }
         
         .week-header { background: #f0f0f5; font-weight: bold; padding: 8px; font-size: 12px; color: #555; margin-top: 10px; border-radius: 6px; }
-        .btn-edit-sm { background: var(--blue); color: #fff; padding: 4px 8px; font-size: 11px; border-radius: 6px; margin-left: 5px; }
+        /* Nút Sửa mặc định bị ẩn */
+        .btn-edit-sm { display: none; background: var(--blue); color: #fff; padding: 4px 8px; font-size: 11px; border-radius: 6px; margin-left: 5px; }
+        /* Khi ở chế độ admin thì nút Sửa hiện lên */
+        .is-admin .btn-edit-sm { display: inline-block; }
+        
         .admin-box { display:none; background:#fff1f1; border:2px dashed var(--red); padding:15px; border-radius:12px; margin-bottom:15px; }
     </style>
 </head>
-<body>
+<body id="mainBody">
 
 <div class="container">
     <div style="text-align: right; margin-bottom: 10px;">
@@ -37,12 +41,13 @@
     </div>
 
     <div id="adminPanel" class="admin-box">
-        <h4 style="color:var(--red); margin:0 0 10px 0;">DANH SÁCH NHÂN VIÊN</h4>
+        <h4 style="color:var(--red); margin:0 0 10px 0;">DANH SÁCH NHÂN VIÊN (ĐÃ MỞ QUYỀN SỬA GIỜ)</h4>
         <div style="display:flex; gap:8px; margin-bottom:10px;">
             <input type="text" id="newStaffName" placeholder="Tên NV mới..." style="flex:1; padding:10px; border-radius:8px; border:1px solid #ccc;">
             <button onclick="addNewStaff()" style="background:var(--blue); color:#fff; padding:0 15px; border-radius:8px;">THÊM</button>
         </div>
         <div id="staffListManage"></div>
+        <button onclick="logoutAdmin()" style="width:100%; margin-top:10px; background:#666; color:#fff; padding:8px; border-radius:8px;">THOÁT QUẢN TRỊ (ẨN NÚT SỬA)</button>
     </div>
 
     <div class="card">
@@ -51,7 +56,7 @@
     </div>
 
     <div class="card">
-        <h3>Tổng Công Tháng Này (Bấm tên để xem lịch sử tuần)</h3>
+        <h3>Tổng Công Tháng Này (Bấm tên để xem tuần)</h3>
         <table><tbody id="summaryBody"></tbody></table>
     </div>
 
@@ -93,7 +98,6 @@
         document.getElementById('histCard').style.display = 'block';
         document.getElementById('histTitle').innerText = "LỊCH SỬ: " + name.toUpperCase();
         
-        // Nhóm theo tuần
         const weeks = { "Tuần 4 (22-Hết tháng)": [], "Tuần 3 (15-21)": [], "Tuần 2 (08-14)": [], "Tuần 1 (01-07)": [] };
         data.forEach(h => {
             const day = parseInt(h.date_log.split('-')[2]);
@@ -119,8 +123,20 @@
         document.getElementById('histContent').innerHTML = html || "Chưa có dữ liệu tháng này.";
     }
 
+    function toggleAdminPanel() { 
+        if(prompt("Nhập mật khẩu quản trị (anh Tâm):") === PASS) { 
+            const p = document.getElementById('adminPanel'); 
+            p.style.display = 'block';
+            document.getElementById('mainBody').classList.add('is-admin'); // Hiện nút sửa
+        } else { alert("Sai mật khẩu!"); }
+    }
+
+    function logoutAdmin() {
+        document.getElementById('adminPanel').style.display = 'none';
+        document.getElementById('mainBody').classList.remove('is-admin'); // Ẩn nút sửa
+    }
+
     async function editEntry(id, oldIn, oldOut) {
-        if(prompt("Mật khẩu anh Tâm:") !== PASS) return;
         const nIn = prompt("Giờ VÀO mới (HH:mm):", oldIn);
         const nOut = prompt("Giờ RA mới (HH:mm):", oldOut);
         if(nIn && nOut) {
@@ -154,7 +170,6 @@
         await supabaseClient.from('work_history').insert([{ staff_name: name, location: w.loc, start_time: w.start, end_time: new Date().toISOString(), duration_mins: diff, date_log: new Date().toISOString().split('T')[0] }]);
         localStorage.removeItem('W_LIMO_' + name); init();
     }
-    function toggleAdminPanel() { if(prompt("Mật khẩu anh Tâm:") === PASS) { const p = document.getElementById('adminPanel'); p.style.display = p.style.display==='none'?'block':'none'; } }
     async function addNewStaff() { const n = document.getElementById('newStaffName').value.trim(); if(n){ await supabaseClient.from('staff').insert([{name:n}]); init(); document.getElementById('newStaffName').value=""; } }
     async function removeStaffName(id) { if(confirm("Xóa tên này?")){ await supabaseClient.from('staff').delete().eq('id',id); init(); } }
     function renderAdminList() { document.getElementById('staffListManage').innerHTML = staff.map(s => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;"><span>${s.name.toUpperCase()}</span><button onclick="removeStaffName(${s.id})" style="color:red;background:none;">Xóa</button></div>`).join(''); }
