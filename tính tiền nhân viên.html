@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Điều Hành Limo - Tổng Hợp Công</title>
+    <style>
+        :root { --blue: #007AFF; --green: #34C759; --orange: #FF9500; --red: #FF3B30; --gray: #F2F2F7; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--gray); margin: 0; padding: 10px; -webkit-tap-highlight-color: transparent; }
+        .container { max-width: 600px; margin: 0 auto; padding-bottom: 40px; }
+        .card { background: #fff; padding: 15px; border-radius: 16px; margin-bottom: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        h3 { margin: 0 0 10px 0; font-size: 14px; color: #8e8e93; text-transform: uppercase; }
+        
+        .add-form { display: flex; gap: 8px; margin-bottom: 5px; }
+        input { flex: 1; padding: 12px; border: 1px solid #d1d1d6; border-radius: 10px; font-size: 16px; outline: none; }
+        .btn { border: none; border-radius: 10px; font-weight: 700; cursor: pointer; }
+        .btn-blue { background: var(--blue); color: #fff; padding: 0 15px; }
+        
+        .staff-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        .staff-card { background: #fff; border: 1px solid #e5e5ea; padding: 15px; border-radius: 18px; position: relative; }
+        .active { border: 2px solid var(--green); background: #f2faf2; }
+        .staff-name { font-weight: 800; font-size: 18px; color: #1c1c1e; margin-bottom: 10px; display: block; text-transform: capitalize; }
+
+        .location-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .btn-loc { background: #f0f0f5; color: #1c1c1e; padding: 12px 5px; border-radius: 10px; font-size: 13px; border: 1px solid #d1d1d6; }
+        .btn-out { background: var(--orange); color: #fff; grid-column: span 2; padding: 12px; margin-top: 5px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { text-align: left; padding: 10px 5px; color: #8e8e93; border-bottom: 1px solid #e5e5ea; }
+        td { padding: 12px 5px; border-bottom: 1px solid #f2f2f7; }
+        
+        .badge-loc { background: #e8f2ff; color: var(--blue); padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 11px; }
+        .duration { font-weight: 700; color: var(--green); }
+        .summary-name { font-weight: bold; color: #333; }
+        .summary-total { font-weight: 800; color: var(--blue); font-size: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h3>+ Nhân sự mới</h3>
+        <div class="add-form">
+            <input type="text" id="nameInp" placeholder="Tên nhân viên...">
+            <button class="btn btn-blue" onclick="addStaff()">THÊM</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Điều hành điểm làm</h3>
+        <div class="staff-grid" id="listArea"></div>
+    </div>
+
+    <div class="card">
+        <h3>Bảng tổng hợp công</h3>
+        <table id="summaryTable">
+            <thead>
+                <tr>
+                    <th>Nhân viên</th>
+                    <th style="text-align: right;">Tổng thời gian làm</th>
+                </tr>
+            </thead>
+            <tbody id="summaryBody"></tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Lịch sử chi tiết</h3>
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nhân viên</th>
+                        <th>Điểm</th>
+                        <th>Giờ</th>
+                        <th>Tổng</th>
+                        <th>X</th>
+                    </tr>
+                </thead>
+                <tbody id="histBody"></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <button onclick="if(confirm('Xác nhận xóa hết lịch sử?')) { localStorage.removeItem('L_V9_HIST'); location.reload(); }" style="width:100%; padding:12px; border:none; background:#ff3b3011; color:red; border-radius:12px; font-weight:600; margin-top:10px;">Xóa lịch sử cũ</button>
+</div>
+
+<script>
+    const PW = "1234";
+    const LOCS = ["KHÁNH DƯƠNG", "SÔNG ĐÁY", "LASVEGAST", "MẠNH ĐIỆP"];
+    
+    let staff = JSON.parse(localStorage.getItem('L_V9_STAFF') || '[]');
+    let work = JSON.parse(localStorage.getItem('L_V9_WORK') || '{}');
+    let hist = JSON.parse(localStorage.getItem('L_V9_HIST') || '[]');
+
+    function render() {
+        // Render Điều hành
+        const area = document.getElementById('listArea');
+        area.innerHTML = staff.length === 0 ? "<p style='color:#ccc;'>Chưa có nhân viên.</p>" : "";
+        staff.forEach((n, i) => {
+            const isW = work[i] ? 'active' : '';
+            let content = `<div class="staff-card ${isW}">
+                <button onclick="delStaff(${i})" style="position:absolute;top:5px;right:10px;border:none;background:none;color:#ccc;font-size:20px;">×</button>
+                <span class="staff-name">${n}</span>`;
+            
+            if (!work[i]) {
+                content += `<div class="location-buttons">`;
+                LOCS.forEach(loc => {
+                    content += `<button class="btn btn-loc" onclick="startWork(${i}, '${loc}')">${loc}</button>`;
+                });
+                content += `</div>`;
+            } else {
+                content += `
+                <div style="color:var(--green); font-weight:bold; margin-bottom:10px;">📍 Đang tại: ${work[i].l}</div>
+                <button class="btn btn-out" onclick="endWork(${i})">XONG VIỆC (RA)</button>`;
+            }
+            content += `</div>`;
+            area.innerHTML += content;
+        });
+
+        // Render Lịch sử chi tiết
+        const body = document.getElementById('histBody');
+        body.innerHTML = "";
+        hist.forEach((item, idx) => {
+            const tIn = new Date(item.s).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+            const tOut = new Date(item.e).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+            body.innerHTML += `
+                <tr>
+                    <td><b>${item.n}</b><br><small style="color:#999">${item.d}</small></td>
+                    <td><span class="badge-loc">${item.l}</span></td>
+                    <td>${tIn}-${tOut}</td>
+                    <td class="duration">${item.dur}</td>
+                    <td onclick="delHist(${idx})">🗑️</td>
+                </tr>`;
+        });
+
+        // Render Bảng tổng hợp (TÍNH TOÁN CỘNG DỒN)
+        renderSummary();
+    }
+
+    function renderSummary() {
+        const summaryBody = document.getElementById('summaryBody');
+        const summaryData = {};
+
+        // Duyệt qua lịch sử để cộng dồn số phút
+        hist.forEach(item => {
+            const diffMs = item.e - item.s;
+            if (!summaryData[item.n]) summaryData[item.n] = 0;
+            summaryData[item.n] += diffMs;
+        });
+
+        let html = "";
+        for (const name in summaryData) {
+            const totalMs = summaryData[name];
+            const h = Math.floor(totalMs / 3600000);
+            const m = Math.floor((totalMs % 3600000) / 60000);
+            html += `<tr>
+                <td class="summary-name">${name.toUpperCase()}</td>
+                <td style="text-align: right;" class="summary-total">${h}h ${m}m</td>
+            </tr>`;
+        }
+        summaryBody.innerHTML = html || "<tr><td colspan='2' style='color:#ccc; text-align:center;'>Chưa có dữ liệu tổng hợp</td></tr>";
+    }
+
+    function addStaff() {
+        const inp = document.getElementById('nameInp');
+        if(inp.value.trim()) {
+            staff.push(inp.value.trim().toLowerCase());
+            localStorage.setItem('L_V9_STAFF', JSON.stringify(staff));
+            inp.value = ""; render();
+        }
+    }
+
+    function delStaff(idx) {
+        if(confirm("Xóa nhân viên?")) {
+            staff.splice(idx,1);
+            localStorage.setItem('L_V9_STAFF', JSON.stringify(staff));
+            render();
+        }
+    }
+
+    function startWork(i, loc) {
+        work[i] = { s: Date.now(), l: loc };
+        localStorage.setItem('L_V9_WORK', JSON.stringify(work));
+        render();
+    }
+
+    function endWork(i) {
+        const now = Date.now();
+        const diffMs = now - work[i].s;
+        const h = Math.floor(diffMs / 3600000);
+        const m = Math.floor((diffMs % 3600000) / 60000);
+        
+        hist.unshift({
+            n: staff[i],
+            d: new Date(work[i].s).toLocaleDateString('vi-VN'),
+            l: work[i].l,
+            s: work[i].s,
+            e: now,
+            dur: h + "h " + m + "m"
+        });
+        delete work[i];
+        localStorage.setItem('L_V9_WORK', JSON.stringify(work));
+        localStorage.setItem('L_V9_HIST', JSON.stringify(hist));
+        render();
+    }
+
+    function delHist(idx) {
+        if(prompt("Mật khẩu:") === PW) {
+            hist.splice(idx,1);
+            localStorage.setItem('L_V9_HIST', JSON.stringify(hist));
+            render();
+        }
+    }
+
+    render();
+</script>
+</body>
+</html>
