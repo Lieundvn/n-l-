@@ -73,7 +73,7 @@
     const SB_URL = 'https://bahpzqxmdkzpebmterpl.supabase.co';
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhaHB6cXhtZGt6cGVibXRlcnBsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3Mzc2ODYsImV4cCI6MjA5NDMxMzY4Nn0.kAseV2u7c25UIfEdq0By4KC53ZxhaFimP1D5-OjhO9Y';
     const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
-    const PASS = "1234"; 
+    const PASS = "Tâm1234"; 
 
     let staff = [];
 
@@ -85,7 +85,7 @@
     }
 
     function toggleAdminPanel() {
-        if(prompt("Nhập mật khẩu quản trị (anh Lâm):") === PASS) {
+        if(prompt("Nhập mật khẩu quản trị (anh Tâm):") === PASS) {
             const p = document.getElementById('adminPanel');
             p.style.display = 'block';
         } else { alert("Mật khẩu không đúng!"); }
