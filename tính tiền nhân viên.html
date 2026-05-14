@@ -3,78 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Điều Hành Limo - Tổng Hợp Công</title>
+    <title>Điều Hành Limo Online</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --blue: #007AFF; --green: #34C759; --orange: #FF9500; --red: #FF3B30; --gray: #F2F2F7; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--gray); margin: 0; padding: 10px; -webkit-tap-highlight-color: transparent; }
-        .container { max-width: 600px; margin: 0 auto; padding-bottom: 40px; }
+        .container { max-width: 500px; margin: 0 auto; padding-bottom: 40px; }
         .card { background: #fff; padding: 15px; border-radius: 16px; margin-bottom: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        h3 { margin: 0 0 10px 0; font-size: 14px; color: #8e8e93; text-transform: uppercase; }
+        h3 { margin: 0 0 10px 0; font-size: 14px; color: #8e8e93; text-transform: uppercase; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         
-        .add-form { display: flex; gap: 8px; margin-bottom: 5px; }
-        input { flex: 1; padding: 12px; border: 1px solid #d1d1d6; border-radius: 10px; font-size: 16px; outline: none; }
-        .btn { border: none; border-radius: 10px; font-weight: 700; cursor: pointer; }
-        .btn-blue { background: var(--blue); color: #fff; padding: 0 15px; }
-        
-        .staff-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
-        .staff-card { background: #fff; border: 1px solid #e5e5ea; padding: 15px; border-radius: 18px; position: relative; }
+        .staff-card { background: #fff; border: 1px solid #e5e5ea; padding: 15px; border-radius: 18px; margin-bottom: 10px; }
         .active { border: 2px solid var(--green); background: #f2faf2; }
-        .staff-name { font-weight: 800; font-size: 18px; color: #1c1c1e; margin-bottom: 10px; display: block; text-transform: capitalize; }
-
-        .location-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .btn-loc { background: #f0f0f5; color: #1c1c1e; padding: 12px 5px; border-radius: 10px; font-size: 13px; border: 1px solid #d1d1d6; }
-        .btn-out { background: var(--orange); color: #fff; grid-column: span 2; padding: 12px; margin-top: 5px; }
-
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th { text-align: left; padding: 10px 5px; color: #8e8e93; border-bottom: 1px solid #e5e5ea; }
-        td { padding: 12px 5px; border-bottom: 1px solid #f2f2f7; }
+        .staff-name { font-weight: 800; font-size: 18px; text-transform: uppercase; margin-bottom: 10px; display: block; }
         
-        .badge-loc { background: #e8f2ff; color: var(--blue); padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 11px; }
-        .duration { font-weight: 700; color: var(--green); }
-        .summary-name { font-weight: bold; color: #333; }
-        .summary-total { font-weight: 800; color: var(--blue); font-size: 15px; }
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        button { border: none; border-radius: 12px; font-weight: 700; cursor: pointer; padding: 15px 5px; font-size: 13px; -webkit-appearance: none; }
+        .btn-loc { background: #f0f0f5; color: #1c1c1e; border: 1px solid #d1d1d6; }
+        .btn-out { background: var(--orange); color: #fff; width: 100%; margin-top: 5px; font-size: 15px; padding: 15px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+        th, td { text-align: left; padding: 10px 5px; border-bottom: 1px solid #eee; }
+        .summary-row { font-weight: bold; color: var(--blue); background: #f9f9f9; }
+        .duration { color: var(--green); font-weight: 700; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="card">
-        <h3>+ Nhân sự mới</h3>
-        <div class="add-form">
-            <input type="text" id="nameInp" placeholder="Tên nhân viên...">
-            <button class="btn btn-blue" onclick="addStaff()">THÊM</button>
-        </div>
+        <h3>Điều Hành Hiện Tại</h3>
+        <div id="listArea">Đang kết nối hệ thống...</div>
     </div>
 
     <div class="card">
-        <h3>Điều hành điểm làm</h3>
-        <div class="staff-grid" id="listArea"></div>
-    </div>
-
-    <div class="card">
-        <h3>Bảng tổng hợp công</h3>
-        <table id="summaryTable">
-            <thead>
-                <tr>
-                    <th>Nhân viên</th>
-                    <th style="text-align: right;">Tổng thời gian làm</th>
-                </tr>
-            </thead>
+        <h3>Tổng Công Hôm Nay</h3>
+        <table>
             <tbody id="summaryBody"></tbody>
         </table>
     </div>
 
     <div class="card">
-        <h3>Lịch sử chi tiết</h3>
+        <h3>Lịch Sử Chi Tiết</h3>
         <div style="overflow-x: auto;">
             <table>
                 <thead>
                     <tr>
-                        <th>Nhân viên</th>
+                        <th>Tên</th>
                         <th>Điểm</th>
                         <th>Giờ</th>
                         <th>Tổng</th>
-                        <th>X</th>
                     </tr>
                 </thead>
                 <tbody id="histBody"></tbody>
@@ -82,138 +59,126 @@
         </div>
     </div>
     
-    <button onclick="if(confirm('Xác nhận xóa hết lịch sử?')) { localStorage.removeItem('L_V9_HIST'); location.reload(); }" style="width:100%; padding:12px; border:none; background:#ff3b3011; color:red; border-radius:12px; font-weight:600; margin-top:10px;">Xóa lịch sử cũ</button>
+    <p style="text-align: center; color: #ccc; font-size: 10px;">Hệ thống Liêu Hải Limo Online</p>
 </div>
 
 <script>
-    const PW = "1234";
+    // THÔNG TIN KẾT NỐI DỰ ÁN CỦA ANH LÂM
+    const SB_URL = 'https://bahpzqxmdkzpebmterpl.supabase.co';
+    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhaHB6cXhtZGt6cGVibXRlcnBsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3Mzc2ODYsImV4cCI6MjA5NDMxMzY4Nn0.kAseV2u7c25UIfEdq0By4KC53ZxhaFimP1D5-OjhO9Y';
+    const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
     const LOCS = ["KHÁNH DƯƠNG", "SÔNG ĐÁY", "LASVEGAST", "MẠNH ĐIỆP"];
-    
-    let staff = JSON.parse(localStorage.getItem('L_V9_STAFF') || '[]');
-    let work = JSON.parse(localStorage.getItem('L_V9_WORK') || '{}');
-    let hist = JSON.parse(localStorage.getItem('L_V9_HIST') || '[]');
+    let staffNames = [];
 
-    function render() {
-        // Render Điều hành
+    async function init() {
+        // Lấy danh sách nhân viên từ bảng 'staff' trên Supabase
+        const { data: stData, error: stError } = await supabaseClient.from('staff').select('name');
+        if (stError) {
+            console.error(stError);
+            document.getElementById('listArea').innerHTML = "Lỗi: Hãy kiểm tra bảng 'staff' trong SQL Editor.";
+            return;
+        }
+        staffNames = stData.map(s => s.name);
+        await loadAllData();
+    }
+
+    async function loadAllData() {
+        const today = new Date().toISOString().split('T')[0];
+        const { data: hist, error: hiError } = await supabaseClient.from('work_history')
+            .select('*')
+            .eq('date_log', today)
+            .order('id', { ascending: false });
+
+        if (!hiError) renderUI(hist || []);
+    }
+
+    function renderUI(hist) {
         const area = document.getElementById('listArea');
-        area.innerHTML = staff.length === 0 ? "<p style='color:#ccc;'>Chưa có nhân viên.</p>" : "";
-        staff.forEach((n, i) => {
-            const isW = work[i] ? 'active' : '';
-            let content = `<div class="staff-card ${isW}">
-                <button onclick="delStaff(${i})" style="position:absolute;top:5px;right:10px;border:none;background:none;color:#ccc;font-size:20px;">×</button>
-                <span class="staff-name">${n}</span>`;
-            
-            if (!work[i]) {
-                content += `<div class="location-buttons">`;
-                LOCS.forEach(loc => {
-                    content += `<button class="btn btn-loc" onclick="startWork(${i}, '${loc}')">${loc}</button>`;
-                });
-                content += `</div>`;
-            } else {
-                content += `
-                <div style="color:var(--green); font-weight:bold; margin-bottom:10px;">📍 Đang tại: ${work[i].l}</div>
-                <button class="btn btn-out" onclick="endWork(${i})">XONG VIỆC (RA)</button>`;
-            }
-            content += `</div>`;
-            area.innerHTML += content;
-        });
-
-        // Render Lịch sử chi tiết
-        const body = document.getElementById('histBody');
-        body.innerHTML = "";
-        hist.forEach((item, idx) => {
-            const tIn = new Date(item.s).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-            const tOut = new Date(item.e).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-            body.innerHTML += `
-                <tr>
-                    <td><b>${item.n}</b><br><small style="color:#999">${item.d}</small></td>
-                    <td><span class="badge-loc">${item.l}</span></td>
-                    <td>${tIn}-${tOut}</td>
-                    <td class="duration">${item.dur}</td>
-                    <td onclick="delHist(${idx})">🗑️</td>
-                </tr>`;
-        });
-
-        // Render Bảng tổng hợp (TÍNH TOÁN CỘNG DỒN)
-        renderSummary();
-    }
-
-    function renderSummary() {
-        const summaryBody = document.getElementById('summaryBody');
-        const summaryData = {};
-
-        // Duyệt qua lịch sử để cộng dồn số phút
-        hist.forEach(item => {
-            const diffMs = item.e - item.s;
-            if (!summaryData[item.n]) summaryData[item.n] = 0;
-            summaryData[item.n] += diffMs;
-        });
-
-        let html = "";
-        for (const name in summaryData) {
-            const totalMs = summaryData[name];
-            const h = Math.floor(totalMs / 3600000);
-            const m = Math.floor((totalMs % 3600000) / 60000);
-            html += `<tr>
-                <td class="summary-name">${name.toUpperCase()}</td>
-                <td style="text-align: right;" class="summary-total">${h}h ${m}m</td>
-            </tr>`;
-        }
-        summaryBody.innerHTML = html || "<tr><td colspan='2' style='color:#ccc; text-align:center;'>Chưa có dữ liệu tổng hợp</td></tr>";
-    }
-
-    function addStaff() {
-        const inp = document.getElementById('nameInp');
-        if(inp.value.trim()) {
-            staff.push(inp.value.trim().toLowerCase());
-            localStorage.setItem('L_V9_STAFF', JSON.stringify(staff));
-            inp.value = ""; render();
-        }
-    }
-
-    function delStaff(idx) {
-        if(confirm("Xóa nhân viên?")) {
-            staff.splice(idx,1);
-            localStorage.setItem('L_V9_STAFF', JSON.stringify(staff));
-            render();
-        }
-    }
-
-    function startWork(i, loc) {
-        work[i] = { s: Date.now(), l: loc };
-        localStorage.setItem('L_V9_WORK', JSON.stringify(work));
-        render();
-    }
-
-    function endWork(i) {
-        const now = Date.now();
-        const diffMs = now - work[i].s;
-        const h = Math.floor(diffMs / 3600000);
-        const m = Math.floor((diffMs % 3600000) / 60000);
+        area.innerHTML = "";
         
-        hist.unshift({
-            n: staff[i],
-            d: new Date(work[i].s).toLocaleDateString('vi-VN'),
-            l: work[i].l,
-            s: work[i].s,
-            e: now,
-            dur: h + "h " + m + "m"
+        staffNames.forEach(name => {
+            const isWorking = localStorage.getItem('W_LIMO_' + name);
+            let html = `<div class="staff-card ${isWorking ? 'active' : ''}">
+                <span class="staff-name">${name}</span>`;
+            
+            if (!isWorking) {
+                html += `<div class="btn-grid">`;
+                LOCS.forEach(l => {
+                    html += `<button class="btn btn-loc" onclick="startWork('${name}', '${l}')">${l}</button>`;
+                });
+                html += `</div>`;
+            } else {
+                const wData = JSON.parse(isWorking);
+                html += `<div style="color:var(--green); font-weight:bold; margin-bottom:10px;">📍 TẠI: ${wData.loc}</div>
+                         <button class="btn btn-out" onclick="endWork('${name}')">XÁC NHẬN RA ĐIỂM</button>`;
+            }
+            html += `</div>`;
+            area.innerHTML += html;
         });
-        delete work[i];
-        localStorage.setItem('L_V9_WORK', JSON.stringify(work));
-        localStorage.setItem('L_V9_HIST', JSON.stringify(hist));
-        render();
-    }
 
-    function delHist(idx) {
-        if(prompt("Mật khẩu:") === PW) {
-            hist.splice(idx,1);
-            localStorage.setItem('L_V9_HIST', JSON.stringify(hist));
-            render();
+        // Bảng lịch sử & Tổng hợp
+        const histBody = document.getElementById('histBody');
+        const summaryBody = document.getElementById('summaryBody');
+        const summary = {};
+        histBody.innerHTML = "";
+
+        hist.forEach(h => {
+            if (h.end_time) {
+                const sT = new Date(h.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                const eT = new Date(h.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                const hWork = Math.floor(h.duration_mins / 60);
+                const mWork = h.duration_mins % 60;
+
+                histBody.innerHTML += `<tr>
+                    <td><b>${h.staff_name.toUpperCase()}</b></td>
+                    <td>${h.location}</td>
+                    <td>${sT}-${eT}</td>
+                    <td class="duration">${hWork}h ${mWork}m</td>
+                </tr>`;
+                
+                if(!summary[h.staff_name]) summary[h.staff_name] = 0;
+                summary[h.staff_name] += h.duration_mins;
+            }
+        });
+
+        summaryBody.innerHTML = "";
+        for (const name in summary) {
+            const h = Math.floor(summary[name]/60);
+            const m = summary[name]%60;
+            summaryBody.innerHTML += `<tr class="summary-row"><td>${name.toUpperCase()}</td><td style="text-align:right">${h}h ${m}m</td></tr>`;
         }
     }
 
-    render();
+    async function startWork(name, loc) {
+        const start = new Date().toISOString();
+        localStorage.setItem('W_LIMO_' + name, JSON.stringify({loc, start}));
+        loadAllData();
+    }
+
+    async function endWork(name) {
+        const wData = JSON.parse(localStorage.getItem('W_LIMO_' + name));
+        const end = new Date().toISOString();
+        const diffMin = Math.floor((new Date(end) - new Date(wData.start)) / 60000);
+
+        const { error } = await supabaseClient.from('work_history').insert([{
+            staff_name: name,
+            location: wData.loc,
+            start_time: wData.start,
+            end_time: end,
+            duration_mins: diffMin,
+            date_log: new Date().toISOString().split('T')[0]
+        }]);
+
+        if(!error) {
+            localStorage.removeItem('W_LIMO_' + name);
+            loadAllData();
+        } else {
+            alert("Lỗi: " + error.message);
+        }
+    }
+
+    init();
 </script>
 </body>
 </html>
