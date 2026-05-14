@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Quản Lý Limo - Anh Tâm</title>
+    <title>Quản Lý Limo - Anh Lâm</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --blue: #007AFF; --green: #34C759; --orange: #FF9500; --red: #FF3B30; --gray: #F2F2F7; }
@@ -55,7 +55,7 @@
     </div>
 
     <div class="card">
-        <h3>Tổng Công Tháng Này (Bấm tên để xem tuần)</h3>
+        <h3>Tổng Công Tháng Này (Bấm tên để xem chi tiết)</h3>
         <table><tbody id="summaryBody"></tbody></table>
     </div>
 
@@ -67,14 +67,21 @@
 </div>
 
 <script>
-    const SB_URL = 'https://rcndrqiebvdynqrmkamm.supabase.co/rest/v1/';
+    // THÔNG TIN KẾT NỐI MỚI NHẤT CỦA ANH LÂM
+    const SB_URL = 'https://rcndrqiebvdynqrmkamm.supabase.co'; 
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjbmRycWllYnZkeW5xcm1rYW1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3OTA1MDQsImV4cCI6MjA5MTM2NjUwNH0.DZnXTSuGDkgwB8-vZvND7e7XhzTrXrqfVgKeydfYe_c';
+    
     const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
     const PASS = "Tâm1234"; 
     let staff = [];
 
     async function init() {
-        const { data } = await supabaseClient.from('staff').select('*').order('name');
+        const { data, error } = await supabaseClient.from('staff').select('*').order('name');
+        if (error) {
+            console.error("Lỗi lấy dữ liệu staff:", error);
+            document.getElementById('listArea').innerHTML = "Lỗi kết nối Database!";
+            return;
+        }
         staff = data || [];
         renderAdminList();
         loadSummary();
@@ -85,7 +92,9 @@
         const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('en-CA');
         const { data } = await supabaseClient.from('work_history').select('*').gte('date_log', startOfMonth);
         const sum = {};
-        data.forEach(h => { sum[h.staff_name] = (sum[h.staff_name] || 0) + h.duration_mins; });
+        if (data) {
+            data.forEach(h => { sum[h.staff_name] = (sum[h.staff_name] || 0) + h.duration_mins; });
+        }
         document.getElementById('summaryBody').innerHTML = Object.keys(sum).sort().map(name => 
             `<tr class="summary-row" onclick="viewStaffHistory('${name}')"><td>${name.toUpperCase()}</td><td style="text-align:right">${Math.floor(sum[name]/60)}h ${sum[name]%60}m ></td></tr>`).join('');
     }
@@ -98,13 +107,15 @@
         document.getElementById('histTitle').innerText = "LỊCH SỬ: " + name.toUpperCase();
         
         const weeks = { "Tuần 4 (22-Hết tháng)": [], "Tuần 3 (15-21)": [], "Tuần 2 (08-14)": [], "Tuần 1 (01-07)": [] };
-        data.forEach(h => {
-            const day = parseInt(h.date_log.split('-')[2]);
-            if (day <= 7) weeks["Tuần 1 (01-07)"].push(h);
-            else if (day <= 14) weeks["Tuần 2 (08-14)"].push(h);
-            else if (day <= 21) weeks["Tuần 3 (15-21)"].push(h);
-            else weeks["Tuần 4 (22-Hết tháng)"].push(h);
-        });
+        if (data) {
+            data.forEach(h => {
+                const day = parseInt(h.date_log.split('-')[2]);
+                if (day <= 7) weeks["Tuần 1 (01-07)"].push(h);
+                else if (day <= 14) weeks["Tuần 2 (08-14)"].push(h);
+                else if (day <= 21) weeks["Tuần 3 (15-21)"].push(h);
+                else weeks["Tuần 4 (22-Hết tháng)"].push(h);
+            });
+        }
 
         let html = "";
         for (let w in weeks) {
@@ -113,7 +124,6 @@
                 weeks[w].forEach(h => {
                     const sT = new Date(h.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
                     const eT = new Date(h.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                    // Thêm phần hiển thị số phút ở đây
                     html += `<tr><td>${h.date_log.split('-')[2]}/${h.date_log.split('-')[1]}</td><td>${h.location}</td>
                              <td>${sT}-${eT} <span class="duration-text">(${h.duration_mins}m)</span></td>
                              <td><button class="btn-edit-sm" onclick="editEntry(${h.id}, '${sT}', '${eT}')">Sửa</button></td></tr>`;
@@ -125,9 +135,8 @@
     }
 
     function toggleAdminPanel() { 
-        if(prompt("Nhập mật khẩu quản trị (anh Tâm):") === PASS) { 
-            const p = document.getElementById('adminPanel'); 
-            p.style.display = 'block';
+        if(prompt("Nhập mật khẩu quản trị:") === PASS) { 
+            document.getElementById('adminPanel').style.display = 'block';
             document.getElementById('mainBody').classList.add('is-admin');
         } else { alert("Sai mật khẩu!"); }
     }
@@ -152,6 +161,8 @@
 
     function renderStaffBtns() {
         const area = document.getElementById('listArea'); area.innerHTML = "";
+        if (staff.length === 0) { area.innerHTML = "Chưa có nhân viên nào. Vào Quản trị để thêm."; return; }
+        
         staff.forEach(s => {
             const isW = localStorage.getItem('W_LIMO_' + s.name);
             let html = `<div class="staff-card ${isW ? 'active' : ''}"><span class="staff-name">${s.name}</span>`;
@@ -164,16 +175,57 @@
         });
     }
 
-    async function startWork(name, loc) { localStorage.setItem('W_LIMO_' + name, JSON.stringify({loc, start: new Date().toISOString()})); init(); }
+    async function startWork(name, loc) { 
+        localStorage.setItem('W_LIMO_' + name, JSON.stringify({loc, start: new Date().toISOString()})); 
+        renderStaffBtns(); 
+    }
+
     async function endWork(name) {
         const w = JSON.parse(localStorage.getItem('W_LIMO_' + name));
         const diff = Math.floor((new Date() - new Date(w.start)) / 60000);
-        await supabaseClient.from('work_history').insert([{ staff_name: name, location: w.loc, start_time: w.start, end_time: new Date().toISOString(), duration_mins: diff, date_log: new Date().toISOString().split('T')[0] }]);
-        localStorage.removeItem('W_LIMO_' + name); init();
+        const { error } = await supabaseClient.from('work_history').insert([{ 
+            staff_name: name, 
+            location: w.loc, 
+            start_time: w.start, 
+            end_time: new Date().toISOString(), 
+            duration_mins: diff, 
+            date_log: new Date().toISOString().split('T')[0] 
+        }]);
+        
+        if (error) {
+            alert("Lỗi lưu dữ liệu: " + error.message);
+        } else {
+            localStorage.removeItem('W_LIMO_' + name); 
+            init();
+        }
     }
-    async function addNewStaff() { const n = document.getElementById('newStaffName').value.trim(); if(n){ await supabaseClient.from('staff').insert([{name:n}]); init(); document.getElementById('newStaffName').value=""; } }
-    async function removeStaffName(id) { if(confirm("Xóa tên này?")){ await supabaseClient.from('staff').delete().eq('id',id); init(); } }
-    function renderAdminList() { document.getElementById('staffListManage').innerHTML = staff.map(s => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;"><span>${s.name.toUpperCase()}</span><button onclick="removeStaffName(${s.id})" style="color:red;background:none;">Xóa</button></div>`).join(''); }
+
+    async function addNewStaff() { 
+        const n = document.getElementById('newStaffName').value.trim(); 
+        if(n){ 
+            const { error } = await supabaseClient.from('staff').insert([{name: n}]); 
+            if (error) {
+                alert("Lỗi thêm NV: " + error.message);
+            } else {
+                document.getElementById('newStaffName').value=""; 
+                init(); 
+            }
+        } 
+    }
+
+    async function removeStaffName(id) { 
+        if(confirm("Xóa tên này khỏi danh sách?")){ 
+            await supabaseClient.from('staff').delete().eq('id', id); 
+            init(); 
+        } 
+    }
+
+    function renderAdminList() { 
+        document.getElementById('staffListManage').innerHTML = staff.map(s => 
+            `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;"><span>${s.name.toUpperCase()}</span><button onclick="removeStaffName(${s.id})" style="color:red;background:none;">Xóa</button></div>`).join(''); 
+    }
+
+    // Chạy khởi tạo
     init();
 </script>
 </body>
