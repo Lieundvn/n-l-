@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Hệ Thống Limo Pro</title>
+    <title>Hệ Thống Limo Pro Online</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --blue: #007AFF; --green: #34C759; --orange: #FF9500; --red: #FF3B30; --gray: #F2F2F7; }
@@ -11,35 +11,28 @@
         .container { max-width: 600px; margin: 0 auto; padding-bottom: 40px; }
         .card { background: #fff; padding: 15px; border-radius: 16px; margin-bottom: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         h3 { margin: 0 0 10px 0; font-size: 14px; color: #8e8e93; text-transform: uppercase; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-        
-        /* Giao diện nhân viên */
         .staff-card { background: #fff; border: 1px solid #e5e5ea; padding: 15px; border-radius: 18px; margin-bottom: 10px; }
         .active { border: 2px solid var(--green); background: #f2faf2; }
         .staff-name { font-weight: 800; font-size: 18px; text-transform: uppercase; margin-bottom: 10px; display: block; }
         .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        button { border: none; border-radius: 12px; font-weight: 700; cursor: pointer; padding: 12px 5px; -webkit-appearance: none; }
+        button { border: none; border-radius: 12px; font-weight: 700; cursor: pointer; padding: 12px 5px; }
         .btn-loc { background: #f0f0f5; border: 1px solid #d1d1d6; }
         .btn-out { background: var(--orange); color: #fff; width: 100%; margin-top: 5px; padding: 15px; }
-
-        /* Bảng lịch sử */
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         th, td { text-align: left; padding: 10px 5px; border-bottom: 1px solid #eee; }
         .btn-action { padding: 5px 8px; border-radius: 6px; font-size: 11px; margin-left: 3px; color: #fff; }
         .btn-edit { background: var(--blue); }
         .btn-del { background: var(--red); }
-        
-        /* Admin Box */
-        .admin-box { background: #fff1f1; border: 1px dashed var(--red); padding: 15px; border-radius: 12px; margin-bottom: 15px; }
+        .admin-box { background: #fff1f1; border: 1px dashed var(--red); padding: 15px; border-radius: 12px; margin-bottom: 15px; display: none; }
     </style>
 </head>
 <body>
-
 <div class="container">
     <div style="text-align: right; margin-bottom: 10px;">
-        <button onclick="toggleAdminPanel()" style="background:none; color:#8e8e93; font-size:12px;">⚙️ Quản lý nhân sự</button>
+        <button onclick="toggleAdminPanel()" style="background:none; color:#8e8e93; font-size:12px; font-weight:normal;">⚙️ Quản lý nhân sự</button>
     </div>
 
-    <div id="adminPanel" class="admin-box" style="display:none;">
+    <div id="adminPanel" class="admin-box">
         <h4 style="margin:0 0 10px 0; color:var(--red);">DANH SÁCH NHÂN SỰ</h4>
         <div style="display:flex; gap:8px; margin-bottom:10px;">
             <input type="text" id="newStaffName" placeholder="Tên NV mới..." style="flex:1; padding:10px; border-radius:8px; border:1px solid #ccc;">
@@ -59,7 +52,7 @@
     </div>
 
     <div class="card">
-        <h3>Lịch Sử Chi Tiết (Sửa/Xóa)</h3>
+        <h3>Lịch Sử Chi Tiết</h3>
         <div style="overflow-x: auto;">
             <table>
                 <thead><tr><th>Tên</th><th>Điểm</th><th>Giờ</th><th>Thao tác</th></tr></thead>
@@ -84,17 +77,16 @@
         await loadAllData();
     }
 
-    // --- QUẢN LÝ NHÂN SỰ (THÊM/XÓA TÊN) ---
     function toggleAdminPanel() {
         if(prompt("Nhập mật khẩu quản trị:") === PASS) {
             const p = document.getElementById('adminPanel');
             p.style.display = p.style.display === 'none' ? 'block' : 'none';
-        }
+        } else { alert("Sai mật khẩu!"); }
     }
 
     async function addNewStaff() {
         const n = document.getElementById('newStaffName').value.trim();
-        if(n) { await supabaseClient.from('staff').insert([{ name: n }]); init(); }
+        if(n) { await supabaseClient.from('staff').insert([{ name: n }]); init(); document.getElementById('newStaffName').value=""; }
     }
 
     async function removeStaffName(id) {
@@ -106,12 +98,11 @@
     function renderAdminList() {
         const div = document.getElementById('staffListManage');
         div.innerHTML = staff.map(s => `<div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #eee;">
-            <span>${s.name.toUpperCase()}</span>
-            <button onclick="removeStaffName(${s.id})" style="color:red; background:none;">Xóa</button>
+            <span style="text-transform:uppercase; font-weight:bold;">${s.name}</span>
+            <button onclick="removeStaffName(${s.id})" style="color:red; background:none; font-weight:bold;">Xóa Tên</button>
         </div>`).join('');
     }
 
-    // --- ĐIỀU HÀNH & LỊCH SỬ ---
     async function loadAllData() {
         const today = new Date().toISOString().split('T')[0];
         const { data: hist } = await supabaseClient.from('work_history').select('*').eq('date_log', today).order('id', { ascending: false });
@@ -119,8 +110,7 @@
     }
 
     function renderUI(hist) {
-        const area = document.getElementById('listArea');
-        area.innerHTML = "";
+        const area = document.getElementById('listArea'); area.innerHTML = "";
         staff.forEach(s => {
             const isWorking = localStorage.getItem('W_LIMO_' + s.name);
             let html = `<div class="staff-card ${isWorking ? 'active' : ''}"><span class="staff-name">${s.name}</span>`;
@@ -138,7 +128,7 @@
         const summaryBody = document.getElementById('summaryBody');
         const summary = {}; histBody.innerHTML = "";
         
-        hist.forEach((h, idx) => {
+        hist.forEach((h) => {
             if (h.end_time) {
                 const sT = new Date(h.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
                 const eT = new Date(h.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
@@ -157,27 +147,22 @@
         summaryBody.innerHTML = Object.keys(summary).map(name => `<tr style="font-weight:bold; color:var(--blue);"><td>${name.toUpperCase()}</td><td style="text-align:right">${Math.floor(summary[name]/60)}h ${summary[name]%60}m</td></tr>`).join('');
     }
 
-    // --- SỬA / XÓA DÒNG LỊCH SỬ ---
     async function editEntry(id, oldIn, oldOut) {
         const nIn = prompt("Sửa giờ VÀO (HH:mm):", oldIn);
         const nOut = prompt("Sửa giờ RA (HH:mm):", oldOut);
-        if(nIn && nOut && prompt("Nhập mật khẩu để lưu:") === PASS) {
-            const today = new Date().toLocaleDateString('en-CA'); // yyyy-mm-dd
+        if(nIn && nOut && prompt("Mật khẩu chủ:") === PASS) {
+            const today = new Date().toLocaleDateString('en-CA');
             const start = new Date(`${today}T${nIn}:00`).toISOString();
             const end = new Date(`${today}T${nOut}:00`).toISOString();
             const diffMin = Math.floor((new Date(end) - new Date(start)) / 60000);
-            
-            await supabaseClient.from('work_history').update({ 
-                start_time: start, end_time: end, duration_mins: diffMin 
-            }).eq('id', id);
+            await supabaseClient.from('work_history').update({ start_time: start, end_time: end, duration_mins: diffMin }).eq('id', id);
             init();
         }
     }
 
     async function deleteEntry(id) {
-        if(prompt("Nhập mật khẩu để XÓA dòng này:") === PASS) {
-            await supabaseClient.from('work_history').delete().eq('id', id);
-            init();
+        if(prompt("Mật khẩu để XÓA dòng này:") === PASS) {
+            await supabaseClient.from('work_history').delete().eq('id', id); init();
         }
     }
 
@@ -190,9 +175,7 @@
         const wData = JSON.parse(localStorage.getItem('W_LIMO_' + name));
         const end = new Date().toISOString();
         const diffMin = Math.floor((new Date(end) - new Date(wData.start)) / 60000);
-        await supabaseClient.from('work_history').insert([{
-            staff_name: name, location: wData.loc, start_time: wData.start, end_time: end, duration_mins: diffMin, date_log: new Date().toISOString().split('T')[0]
-        }]);
+        await supabaseClient.from('work_history').insert([{ staff_name: name, location: wData.loc, start_time: wData.start, end_time: end, duration_mins: diffMin, date_log: new Date().toISOString().split('T')[0] }]);
         localStorage.removeItem('W_LIMO_' + name);
         loadAllData();
     }
