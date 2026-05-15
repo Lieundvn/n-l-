@@ -43,7 +43,7 @@
     <div id="adminPanel" class="admin-box">
         <h4 style="color:var(--red); margin:0 0 10px 0;">CÀI ĐẶT NHÂN VIÊN</h4>
         <div id="staffListManage"></div>
-        <button onclick="logoutAdmin()" style="width:100%; margin-top:10px; background:#666; color:#fff; padding:8px; border-radius:8px;">THOÁT & KHÓA SỬA</button>
+        <button onclick="logoutAdmin()" style="width:100%; margin-top:10px; background:#666; color:#fff; padding:8px; border-radius:8px;">THOÁT QUẢN TRỊ</button>
     </div>
 
     <div class="card">
@@ -52,7 +52,7 @@
     </div>
 
     <div class="card">
-        <h3>Tổng Công Chưa Trả (Tháng này)</h3>
+        <h3>Tổng Công Nợ (Tháng này)</h3>
         <table><tbody id="summaryBody"></tbody></table>
     </div>
 
@@ -69,7 +69,6 @@
 </div>
 
 <script>
-    // ĐÃ THAY LẠI ĐÚNG ĐỊA CHỈ KẾT NỐI CỦA ANH LÂM
     const SB_URL = 'https://rcndrqiebvdynqrmkamm.supabase.co'; 
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjbmRycWllYnZkeW5xcm1rYW1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3OTA1MDQsImV4cCI6MjA5MTM2NjUwNH0.DZnXTSuGDkgwB8-vZvND7e7XhzTrXrqfVgKeydfYe_c';
     const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
@@ -88,11 +87,18 @@
 
     async function loadSummary() {
         const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('en-CA');
-        const { data } = await supabaseClient.from('work_history').select('*').gte('date_log', startOfMonth).or('is_paid.eq.false,is_paid.is.null');
+        const { data } = await supabaseClient.from('work_history').select('*').gte('date_log', startOfMonth);
         const sum = {};
-        if (data) data.forEach(h => { sum[h.staff_name] = (sum[h.staff_name] || 0) + h.duration_mins; });
+        if (data) {
+            data.forEach(h => { 
+                // Chỉ cộng vào tổng nếu chưa thanh toán (is_paid không phải true)
+                if (h.is_paid !== true) {
+                    sum[h.staff_name] = (sum[h.staff_name] || 0) + h.duration_mins; 
+                }
+            });
+        }
         document.getElementById('summaryBody').innerHTML = Object.keys(sum).sort().map(name => 
-            `<tr class="summary-row" onclick="viewStaffHistory('${name}')"><td>${name.toUpperCase()}</td><td style="text-align:right; color:red;">${Math.floor(sum[name]/60)}h ${sum[name]%60}m nợ ></td></tr>`).join('') || "<tr><td>Mọi người đã được trả đủ!</td></tr>";
+            `<tr class="summary-row" onclick="viewStaffHistory('${name}')"><td>${name.toUpperCase()}</td><td style="text-align:right; color:red;">${Math.floor(sum[name]/60)}h ${sum[name]%60}m ></td></tr>`).join('') || "<tr><td>Hết nợ!</td></tr>";
     }
 
     function renderStaffBtns() {
@@ -110,27 +116,26 @@
     }
 
     function handleStart(name, loc, correctPin) {
-        const inputPin = prompt(`Nhập mã PIN của ${name.toUpperCase()}:`);
+        const inputPin = prompt(`Mã PIN ${name}:`);
         if (inputPin === correctPin) {
             localStorage.setItem('W_LIMO_' + name, JSON.stringify({loc, start: new Date().toISOString()}));
             init();
-        } else if (inputPin !== null) alert("Sai mã PIN!");
+        } else if (inputPin !== null) alert("Sai PIN!");
     }
 
     async function handleEnd(name, correctPin) {
-        const inputPin = prompt(`Nhập mã PIN của ${name.toUpperCase()} để kết thúc:`);
+        const inputPin = prompt(`Mã PIN kết thúc:`);
         if (inputPin === correctPin) {
             const w = JSON.parse(localStorage.getItem('W_LIMO_' + name));
             const diff = Math.floor((new Date() - new Date(w.start)) / 60000);
             await supabaseClient.from('work_history').insert([{ 
                 staff_name: name, location: w.loc, start_time: w.start, 
                 end_time: new Date().toISOString(), duration_mins: diff, 
-                date_log: new Date().toISOString().split('T')[0],
-                is_paid: false 
+                date_log: new Date().toISOString().split('T')[0]
             }]);
             localStorage.removeItem('W_LIMO_' + name);
             init();
-        } else if (inputPin !== null) alert("Sai mã PIN!");
+        } else if (inputPin !== null) alert("Sai PIN!");
     }
 
     function setFilter(f) {
@@ -144,12 +149,14 @@
         viewingStaffName = name;
         document.getElementById('histCard').style.display = 'block';
         document.getElementById('histTitle').innerText = "LỊCH SỬ: " + name.toUpperCase();
-        let query = supabaseClient.from('work_history').select('*').eq('staff_name', name).order('date_log', {ascending: false});
-        if(currentFilter === 'unpaid') query = query.or('is_paid.eq.false,is_paid.is.null');
-        if(currentFilter === 'paid') query = query.eq('is_paid', true);
-        const { data } = await query.limit(50);
+        const { data } = await supabaseClient.from('work_history').select('*').eq('staff_name', name).order('date_log', {ascending: false}).limit(100);
+        
+        let filteredData = data || [];
+        if(currentFilter === 'unpaid') filteredData = filteredData.filter(h => h.is_paid !== true);
+        if(currentFilter === 'paid') filteredData = filteredData.filter(h => h.is_paid === true);
+        
         let html = "<table>";
-        data.forEach(h => {
+        filteredData.forEach(h => {
             const sT = new Date(h.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
             const eT = new Date(h.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
             const isPaid = h.is_paid === true;
@@ -157,7 +164,7 @@
                 <td>${h.date_log.split('-')[2]}/${h.date_log.split('-')[1]}</td>
                 <td>${h.location}</td>
                 <td>${sT}-${eT} <span class="duration-text">(${h.duration_mins}m)</span></td>
-                <td style="text-align:right; min-width:80px;">
+                <td style="text-align:right;">
                     <button class="btn-admin-only btn-pay" onclick="togglePayment(${h.id}, ${isPaid})">${isPaid ? '✅' : '💸'}</button>
                     <button class="btn-admin-only btn-edit" onclick="editEntry(${h.id}, '${h.date_log}', '${sT}', '${eT}')">Sửa</button>
                 </td>
@@ -173,8 +180,8 @@
     }
 
     async function editEntry(id, date, oldIn, oldOut) {
-        const nIn = prompt("Sửa giờ VÀO (HH:mm):", oldIn);
-        const nOut = prompt("Sửa giờ RA (HH:mm):", oldOut);
+        const nIn = prompt("Giờ VÀO:", oldIn);
+        const nOut = prompt("Giờ RA:", oldOut);
         if(nIn && nOut) {
             const start = new Date(`${date}T${nIn}:00`).toISOString();
             const end = new Date(`${date}T${nOut}:00`).toISOString();
@@ -191,14 +198,12 @@
             document.getElementById('mainBody').classList.add('is-admin');
         } else alert("Sai mật khẩu!");
     }
-    
     function logoutAdmin() { 
         document.getElementById('adminPanel').style.display = 'none'; 
         document.getElementById('mainBody').classList.remove('is-admin');
     }
-
-    async function removeStaffName(id) { if(confirm("Xóa nhân viên này?")) { await supabaseClient.from('staff').delete().eq('id', id); init(); } }
-    function renderAdminList() { document.getElementById('staffListManage').innerHTML = staff.map(s => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;"><span>${s.name.toUpperCase()} (PIN: ${s.pin})</span><button onclick="removeStaffName(${s.id})" style="color:red;background:none;">Xóa</button></div>`).join(''); }
+    async function removeStaffName(id) { if(confirm("Xóa?")) { await supabaseClient.from('staff').delete().eq('id', id); init(); } }
+    function renderAdminList() { document.getElementById('staffListManage').innerHTML = staff.map(s => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;"><span>${s.name.toUpperCase()}</span><button onclick="removeStaffName(${s.id})" style="color:red;background:none;">Xóa</button></div>`).join(''); }
 
     init();
 </script>
