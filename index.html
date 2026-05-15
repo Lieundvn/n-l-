@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Quản Lý Limo - Chốt Lương</title>
+    <title>Quản Lý Nhân Viên - mr Tâm</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --blue: #007AFF; --green: #34C759; --orange: #FF9500; --red: #FF3B30; --gray: #F2F2F7; }
@@ -31,6 +31,8 @@
         .filter-tabs { display: flex; gap: 5px; margin-bottom: 10px; }
         .filter-tabs button { flex: 1; font-size: 11px; padding: 6px; background: #ddd; }
         .filter-tabs button.active-tab { background: var(--blue); color: #fff; }
+        .add-box { display: flex; gap: 8px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ffcccc; }
+        .add-box input { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ccc; }
     </style>
 </head>
 <body id="mainBody">
@@ -42,17 +44,22 @@
 
     <div id="adminPanel" class="admin-box">
         <h4 style="color:var(--red); margin:0 0 10px 0;">CÀI ĐẶT NHÂN VIÊN</h4>
+        <div class="add-box">
+            <input type="text" id="newStaffName" placeholder="Tên nhân viên...">
+            <input type="text" id="newStaffPin" placeholder="PIN" style="width:60px;">
+            <button onclick="addNewStaff()" style="background:var(--blue); color:#fff; padding:0 15px; border-radius:8px;">THÊM</button>
+        </div>
         <div id="staffListManage"></div>
         <button onclick="logoutAdmin()" style="width:100%; margin-top:10px; background:#666; color:#fff; padding:8px; border-radius:8px;">THOÁT QUẢN TRỊ</button>
     </div>
 
     <div class="card">
-        <h3>Điều Hành Hiện Tại</h3>
+        <h3>Điểm Làm Hiện Tại</h3>
         <div id="listArea">Đang tải...</div>
     </div>
 
     <div class="card">
-        <h3>Tổng Công Nợ (Tháng này)</h3>
+        <h3>Tổng Giờ Làm (Tháng này)</h3>
         <table><tbody id="summaryBody"></tbody></table>
     </div>
 
@@ -91,7 +98,6 @@
         const sum = {};
         if (data) {
             data.forEach(h => { 
-                // Chỉ cộng vào tổng nếu chưa thanh toán (is_paid không phải true)
                 if (h.is_paid !== true) {
                     sum[h.staff_name] = (sum[h.staff_name] || 0) + h.duration_mins; 
                 }
@@ -131,7 +137,8 @@
             await supabaseClient.from('work_history').insert([{ 
                 staff_name: name, location: w.loc, start_time: w.start, 
                 end_time: new Date().toISOString(), duration_mins: diff, 
-                date_log: new Date().toISOString().split('T')[0]
+                date_log: new Date().toISOString().split('T')[0],
+                is_paid: false
             }]);
             localStorage.removeItem('W_LIMO_' + name);
             init();
@@ -164,7 +171,7 @@
                 <td>${h.date_log.split('-')[2]}/${h.date_log.split('-')[1]}</td>
                 <td>${h.location}</td>
                 <td>${sT}-${eT} <span class="duration-text">(${h.duration_mins}m)</span></td>
-                <td style="text-align:right;">
+                <td style="text-align:right; min-width:85px;">
                     <button class="btn-admin-only btn-pay" onclick="togglePayment(${h.id}, ${isPaid})">${isPaid ? '✅' : '💸'}</button>
                     <button class="btn-admin-only btn-edit" onclick="editEntry(${h.id}, '${h.date_log}', '${sT}', '${eT}')">Sửa</button>
                 </td>
@@ -174,9 +181,14 @@
     }
 
     async function togglePayment(id, currentStatus) {
-        await supabaseClient.from('work_history').update({ is_paid: !currentStatus }).eq('id', id);
-        viewStaffHistory(viewingStaffName);
-        loadSummary();
+        // Nút thanh toán sẽ cập nhật cột is_paid
+        const { error } = await supabaseClient.from('work_history').update({ is_paid: !currentStatus }).eq('id', id);
+        if (error) {
+            alert("Lỗi: Bạn cần vào Supabase -> SQL Editor chạy dòng: ALTER TABLE work_history ADD COLUMN is_paid BOOLEAN DEFAULT FALSE;");
+        } else {
+            viewStaffHistory(viewingStaffName);
+            loadSummary();
+        }
     }
 
     async function editEntry(id, date, oldIn, oldOut) {
@@ -198,12 +210,33 @@
             document.getElementById('mainBody').classList.add('is-admin');
         } else alert("Sai mật khẩu!");
     }
+
     function logoutAdmin() { 
         document.getElementById('adminPanel').style.display = 'none'; 
         document.getElementById('mainBody').classList.remove('is-admin');
     }
+
+    async function addNewStaff() {
+        const n = document.getElementById('newStaffName').value.trim();
+        const p = document.getElementById('newStaffPin').value.trim();
+        if(n && p) {
+            const { error } = await supabaseClient.from('staff').insert([{name: n, pin: p}]);
+            if(!error) {
+                document.getElementById('newStaffName').value=""; document.getElementById('newStaffPin').value="";
+                init();
+            } else alert("Lỗi thêm nhân viên!");
+        } else alert("Nhập đủ Tên và PIN");
+    }
+
     async function removeStaffName(id) { if(confirm("Xóa?")) { await supabaseClient.from('staff').delete().eq('id', id); init(); } }
-    function renderAdminList() { document.getElementById('staffListManage').innerHTML = staff.map(s => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;"><span>${s.name.toUpperCase()}</span><button onclick="removeStaffName(${s.id})" style="color:red;background:none;">Xóa</button></div>`).join(''); }
+
+    function renderAdminList() { 
+        document.getElementById('staffListManage').innerHTML = staff.map(s => 
+            `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;">
+                <span>${s.name.toUpperCase()} (PIN: ${s.pin})</span>
+                <button onclick="removeStaffName(${s.id})" style="color:red;background:none;">Xóa</button>
+            </div>`).join(''); 
+    }
 
     init();
 </script>
