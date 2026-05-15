@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Quản Lý Nhân Viên - Mr Tâm</title>
+    <title>Quản Lý Limo - Chốt Lương</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --blue: #007AFF; --green: #34C759; --orange: #FF9500; --red: #FF3B30; --gray: #F2F2F7; }
@@ -23,13 +23,11 @@
         .summary-row { cursor: pointer; font-weight: bold; color: var(--blue); }
         .admin-box { display:none; background:#fff1f1; border:2px dashed var(--red); padding:15px; border-radius:12px; margin-bottom:15px; }
         .duration-text { color: var(--green); font-weight: bold; margin-left: 4px; }
-        
         .btn-admin-only { display: none; margin-left: 5px; border-radius: 6px; font-size: 11px; padding: 5px 8px; }
         .is-admin .btn-admin-only { display: inline-block; }
         .btn-edit { background: var(--blue); color: #fff; }
         .btn-pay { background: #eee; color: #333; border: 1px solid #ccc; }
         .paid { opacity: 0.5; background: #f9f9f9; text-decoration: line-through; color: #888; }
-        .paid .duration-text { color: #888; }
         .filter-tabs { display: flex; gap: 5px; margin-bottom: 10px; }
         .filter-tabs button { flex: 1; font-size: 11px; padding: 6px; background: #ddd; }
         .filter-tabs button.active-tab { background: var(--blue); color: #fff; }
@@ -44,11 +42,6 @@
 
     <div id="adminPanel" class="admin-box">
         <h4 style="color:var(--red); margin:0 0 10px 0;">CÀI ĐẶT NHÂN VIÊN</h4>
-        <div style="display:flex; gap:8px; margin-bottom:10px;">
-            <input type="text" id="newStaffName" placeholder="Tên..." style="flex:1; padding:10px; border-radius:8px; border:1px solid #ccc;">
-            <input type="text" id="newStaffPin" placeholder="PIN" style="width:60px; padding:10px; border-radius:8px; border:1px solid #ccc;">
-            <button onclick="addNewStaff()" style="background:var(--blue); color:#fff; padding:0 15px; border-radius:8px;">THÊM</button>
-        </div>
         <div id="staffListManage"></div>
         <button onclick="logoutAdmin()" style="width:100%; margin-top:10px; background:#666; color:#fff; padding:8px; border-radius:8px;">THOÁT & KHÓA SỬA</button>
     </div>
@@ -60,7 +53,7 @@
 
     <div class="card">
         <h3>Tổng Công Chưa Trả (Tháng này)</h3>
-        <table style="margin-top:5px;"><tbody id="summaryBody"></tbody></table>
+        <table><tbody id="summaryBody"></tbody></table>
     </div>
 
     <div class="card" id="histCard" style="display:none;">
@@ -76,6 +69,7 @@
 </div>
 
 <script>
+    // ĐÃ THAY LẠI ĐÚNG ĐỊA CHỈ KẾT NỐI CỦA ANH LÂM
     const SB_URL = 'https://rcndrqiebvdynqrmkamm.supabase.co'; 
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjbmRycWllYnZkeW5xcm1rYW1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3OTA1MDQsImV4cCI6MjA5MTM2NjUwNH0.DZnXTSuGDkgwB8-vZvND7e7XhzTrXrqfVgKeydfYe_c';
     const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
@@ -94,7 +88,6 @@
 
     async function loadSummary() {
         const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('en-CA');
-        // Chỉ lấy những lượt CHƯA TRẢ (is_paid = false hoặc null)
         const { data } = await supabaseClient.from('work_history').select('*').gte('date_log', startOfMonth).or('is_paid.eq.false,is_paid.is.null');
         const sum = {};
         if (data) data.forEach(h => { sum[h.staff_name] = (sum[h.staff_name] || 0) + h.duration_mins; });
@@ -151,13 +144,10 @@
         viewingStaffName = name;
         document.getElementById('histCard').style.display = 'block';
         document.getElementById('histTitle').innerText = "LỊCH SỬ: " + name.toUpperCase();
-        
         let query = supabaseClient.from('work_history').select('*').eq('staff_name', name).order('date_log', {ascending: false});
         if(currentFilter === 'unpaid') query = query.or('is_paid.eq.false,is_paid.is.null');
         if(currentFilter === 'paid') query = query.eq('is_paid', true);
-        
         const { data } = await query.limit(50);
-        
         let html = "<table>";
         data.forEach(h => {
             const sT = new Date(h.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
@@ -195,28 +185,6 @@
         }
     }
 
-    async function addNewStaff() {
-        const n = document.getElementById('newStaffName').value.trim();
-        const p = document.getElementById('newStaffPin').value.trim();
-        if(n && p) {
-            await supabaseClient.from('staff').insert([{name: n, pin: p}]);
-            document.getElementById('newStaffName').value=""; document.getElementById('newStaffPin').value="";
-            init();
-        }
-    }
-
-    async function removeStaffName(id) {
-        if(confirm("Xóa nhân viên này?")) { await supabaseClient.from('staff').delete().eq('id', id); init(); }
-    }
-
-    function renderAdminList() {
-        document.getElementById('staffListManage').innerHTML = staff.map(s => 
-            `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;">
-                <span>${s.name.toUpperCase()} (PIN: ${s.pin})</span>
-                <button onclick="removeStaffName(${s.id})" style="color:red;background:none;">Xóa</button>
-            </div>`).join('');
-    }
-
     function toggleAdminPanel() { 
         if(prompt("Mật khẩu quản trị:") === ADMIN_PASS) {
             document.getElementById('adminPanel').style.display = 'block';
@@ -228,6 +196,9 @@
         document.getElementById('adminPanel').style.display = 'none'; 
         document.getElementById('mainBody').classList.remove('is-admin');
     }
+
+    async function removeStaffName(id) { if(confirm("Xóa nhân viên này?")) { await supabaseClient.from('staff').delete().eq('id', id); init(); } }
+    function renderAdminList() { document.getElementById('staffListManage').innerHTML = staff.map(s => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;"><span>${s.name.toUpperCase()} (PIN: ${s.pin})</span><button onclick="removeStaffName(${s.id})" style="color:red;background:none;">Xóa</button></div>`).join(''); }
 
     init();
 </script>
