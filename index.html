@@ -22,15 +22,14 @@
         th, td { text-align: left; padding: 10px 5px; border-bottom: 1px solid #eee; }
         .summary-row { cursor: pointer; font-weight: bold; color: var(--blue); }
         .admin-box { display:none; background:#fff1f1; border:2px dashed var(--red); padding:15px; border-radius:12px; margin-bottom:15px; }
-        .duration-text { color: var(--green); font-weight: bold; margin-left: 4px; }
         
-        /* Nút ẩn/hiện cho Quản lý */
-        .btn-admin-only { display: none; margin-left: 3px; border-radius: 6px; font-size: 10px; padding: 5px 6px; font-weight: bold; }
+        .btn-admin-only { display: none; margin-left: 3px; border-radius: 6px; font-size: 10px; padding: 5px 6px; }
         .is-admin .btn-admin-only { display: inline-block; }
         .btn-pay { background: #eee; color: #333; border: 1px solid #ccc; }
         .btn-edit { background: var(--blue); color: #fff; }
         .btn-del { background: var(--red); color: #fff; }
         .paid { opacity: 0.5; background: #f9f9f9; text-decoration: line-through; color: #888; }
+        .btn-cleanup { background: #333; color: #fff; width: 100%; margin-top: 15px; padding: 12px; }
     </style>
 </head>
 <body id="mainBody">
@@ -48,16 +47,22 @@
             <button onclick="addNewStaff()" style="background:var(--blue); color:#fff; padding:0 15px; border-radius:8px;">THÊM</button>
         </div>
         <div id="staffListManage"></div>
+        
+        <hr style="margin: 15px 0; border: 0.5px solid #ffcccc;">
+        <h4 style="color:var(--red); margin:0 0 5px 0;">DỌN DẸP HỆ THỐNG</h4>
+        <button class="btn-cleanup" onclick="cleanupHistory()">🗑️ XÓA HẾT LỊCH SỬ CŨ</button>
+        <p style="font-size: 10px; color: #666; margin-top: 5px;">* Xóa toàn bộ lịch sử trước ngày hôm nay để máy chạy nhanh hơn.</p>
+        
         <button onclick="logoutAdmin()" style="width:100%; margin-top:10px; background:#666; color:#fff; padding:8px; border-radius:8px;">THOÁT QUẢN TRỊ</button>
     </div>
 
     <div class="card">
-        <h3>Nhân Viên Làm Tại Đây</h3>
+        <h3>Điểm Làm</h3>
         <div id="listArea">Đang tải...</div>
     </div>
 
     <div class="card">
-        <h3>Tổng Số Giờ Làm (Tháng này)</h3>
+        <h3>Tổng Số Giờ (Tháng này)</h3>
         <table><tbody id="summaryBody"></tbody></table>
     </div>
 
@@ -73,9 +78,8 @@
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjbmRycWllYnZkeW5xcm1rYW1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3OTA1MDQsImV4cCI6MjA5MTM2NjUwNH0.DZnXTSuGDkgwB8-vZvND7e7XhzTrXrqfVgKeydfYe_c';
     const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
     
-    // --- CẤU HÌNH ---
     const TELE_TOKEN = "8898674512:AAETtLIZcdC09cHrt6llr0EYvc27GVotvys"; 
-    const TELE_CHAT_ID = "6172559092"; // ANH NHỚ KIỂM TRA LẠI ID NÀY NHÉ
+    const TELE_CHAT_ID = "6172559092"; 
     const ADMIN_PASS = "Tâm1234"; 
 
     let staff = [];
@@ -93,6 +97,22 @@
         if(!TELE_CHAT_ID) return;
         const url = `https://api.telegram.org/bot${TELE_TOKEN}/sendMessage?chat_id=${TELE_CHAT_ID}&text=${encodeURIComponent(msg)}`;
         fetch(url).catch(e => console.log("Lỗi gửi Tele"));
+    }
+
+    async function cleanupHistory() {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate()); // Lấy ngày hiện tại
+        const dateStr = yesterday.toISOString().split('T')[0];
+
+        if(confirm(`Bạn có chắc muốn xóa TOÀN BỘ lịch sử làm việc trước ngày ${dateStr} không?\n(Hành động này không thể hoàn tác!)`)) {
+            const { error } = await supabaseClient.from('work_history').delete().lt('date_log', dateStr);
+            if(!error) {
+                alert("Đã dọn dẹp lịch sử cũ thành công!");
+                init();
+            } else {
+                alert("Lỗi khi xóa: " + error.message);
+            }
+        }
     }
 
     async function handleStart(name, loc, correctPin) {
@@ -204,7 +224,7 @@
         if(n && p) { await supabaseClient.from('staff').insert([{name: n, pin: p}]); init(); } 
     }
 
-    async function removeStaffName(id) { if(confirm("Xóa?")) { await supabaseClient.from('staff').delete().eq('id', id); init(); } }
+    async function removeStaffName(id) { if(confirm("Xóa nhân viên này?")) { await supabaseClient.from('staff').delete().eq('id', id); init(); } }
 
     function renderAdminList() { 
         document.getElementById('staffListManage').innerHTML = staff.map(s => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;"><span>${s.name.toUpperCase()} (PIN: ${s.pin})</span><button onclick="removeStaffName(${s.id})" style="color:red;background:none;">Xóa</button></div>`).join(''); 
